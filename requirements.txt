@@ -17,3 +17,5 @@ pefile>=2023.2.7
 
 # Testes
 pytest>=7.4.3
+MetaTrader5>=5.0.0
+watchdog>=6.0.0
