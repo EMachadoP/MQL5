@@ -1,0 +1,370 @@
+# Configuração do Pipeline de Reconstrução de EA
+# EA Reconstruction Pipeline v2.0
+
+version: "2.0"
+
+# =============================================================================
+# CONFIGURAÇÕES GLOBAIS
+# =============================================================================
+global:
+  project_name: "EA_Reconstruction_Pipeline"
+  output_dir: "./output"
+  temp_dir: "./temp"
+  log_level: "INFO"
+  max_parallel_jobs: 5
+  
+# =============================================================================
+# FASE 1: INGESTÃO E PRÉ-ANÁLISE
+# =============================================================================
+ingestion:
+  supported_formats: [".ex5", ".ex4"]
+  
+  checksum_verification:
+    enabled: true
+    algorithms: ["md5", "sha256"]
+    
+  entropy_analysis:
+    enabled: true
+    threshold: 7.5  # Valores > 7.5 indicam possível ofuscação/criptografia
+    
+  string_extraction:
+    enabled: true
+    min_length: 4
+    encodings: ["ascii", "utf-16le"]
+    filters:
+      include_patterns:
+        - "Order*"
+        - "Position*"
+        - "iMA|iRSI|iMACD|iBB"
+        - "[0-9]+\.[0-9]+"  # Números decimais (possíveis parâmetros)
+      exclude_patterns:
+        - "__*"
+        - "*.dll"
+
+# =============================================================================
+# FASE 2: ANÁLISE ESTÁTICA
+# =============================================================================
+static_analysis:
+  enabled: true
+  
+  ghidra:
+    enabled: true
+    headless: true
+    max_ram: "6G"
+    analysis_timeout: 1800  # segundos
+    
+    analyzers:
+      - "Decompiler Parameter ID"
+      - "Stack Frame"
+      - "Embedded Media"
+      - "Call Convention ID"
+      - "Create Address Tables"
+      
+    script_paths:
+      - "./ghidra_scripts/extract_functions.py"
+      - "./ghidra_scripts/extract_strings.py"
+      - "./ghidra_scripts/detect_patterns.py"
+      
+  python_utils:
+    enabled: true
+    modules:
+      - name: "pe_analyzer"
+        enabled: true
+      - name: "import_extractor"
+        enabled: true
+      - name: "constant_finder"
+        enabled: true
+        
+  yara_rules:
+    enabled: true
+    rules_dir: "./yara_rules"
+    rules:
+      - "martingale_patterns.yar"
+      - "scalping_patterns.yar"
+      - "grid_patterns.yar"
+      - "indicator_usage.yar"
+
+# =============================================================================
+# FASE 3: ANÁLISE DINÂMICA
+# =============================================================================
+dynamic_analysis:
+  enabled: true
+  
+  backtest:
+    enabled: true
+    
+    mt5_config:
+      terminal_path: "/opt/mt5/terminal64.exe"
+      wine_prefix: "/home/user/.wine"
+      timeout: 3600
+      
+    symbols:
+      - "EURUSD"
+      - "GBPUSD"
+      - "USDJPY"
+      - "XAUUSD"
+      
+    timeframes:
+      - "M1"
+      - "M5"
+      - "H1"
+      - "D1"
+      
+    date_ranges:
+      - name: "bull_market"
+        from: "2020-03-01"
+        to: "2021-01-01"
+      - name: "bear_market"
+        from: "2021-01-01"
+        to: "2022-10-01"
+      - name: "ranging_market"
+        from: "2022-10-01"
+        to: "2023-10-01"
+      - name: "volatile_market"
+        from: "2023-10-01"
+        to: "2024-12-01"
+        
+    modeling:
+      mode: "Every tick"  # Every tick, OHLC, Open prices only
+      spread: "Current"
+      
+  behavior_logging:
+    enabled: true
+    
+    log_events:
+      - "ORDER_SEND"
+      - "POSITION_MODIFY"
+      - "POSITION_CLOSE"
+      - "ON_TICK"
+      - "ON_TRADE"
+      
+    log_indicators:
+      enabled: true
+      buffer_count: 3
+      
+    output_format: "CSV"
+    
+  sandbox:
+    enabled: true
+    docker_image: "mt5-sandbox:latest"
+    max_execution_time: 1800
+    isolation_level: "full"
+
+# =============================================================================
+# FASE 4: RECONSTRUÇÃO
+# =============================================================================
+reconstruction:
+  enabled: true
+  
+  pattern_matching:
+    enabled: true
+    confidence_threshold: 0.75
+    
+    patterns:
+      - id: "scalping_ma_cross"
+        template: "templates/scalping/ma_crossover.mq5"
+        indicators: ["iMA"]
+        timeframes: ["M1", "M5"]
+        
+      - id: "trend_following_rsi"
+        template: "templates/trend/rsi_filter.mq5"
+        indicators: ["iRSI", "iMA"]
+        timeframes: ["H1", "H4"]
+        
+      - id: "grid_trading"
+        template: "templates/grid/basic_grid.mq5"
+        characteristics:
+          - "multiple_pending_orders"
+          - "fixed_distance_levels"
+          
+      - id: "martingale"
+        template: "templates/martingale/basic.mq5"
+        characteristics:
+          - "position_doubling"
+          - "loss_recovery"
+          
+  template_engine:
+    engine: "jinja2"
+    template_dir: "./templates"
+    
+    placeholders:
+      - "{{INDICATORS}}"
+      - "{{PARAMETERS}}"
+      - "{{SIGNAL_LOGIC}}"
+      - "{{RISK_MANAGEMENT}}"
+      - "{{POSITION_SIZING}}"
+      
+  ai_assistance:
+    enabled: true
+    provider: "anthropic"  # anthropic, openai
+    model: "claude-3-5-sonnet-20241022"
+    
+    use_cases:
+      - name: "code_explanation"
+        enabled: true
+        
+      - name: "implementation_suggestions"
+        enabled: true
+        
+      - name: "parameter_optimization"
+        enabled: true
+        
+      - name: "documentation_generation"
+        enabled: true
+        
+    rate_limits:
+      requests_per_minute: 50
+      tokens_per_minute: 40000
+
+# =============================================================================
+# FASE 5: VALIDAÇÃO
+# =============================================================================
+validation:
+  enabled: true
+  
+  behavioral_equivalence:
+    enabled: true
+    
+    metrics:
+      - name: "trade_sequence_similarity"
+        weight: 0.30
+        threshold: 0.85
+        
+      - name: "signal_timing_correlation"
+        weight: 0.25
+        threshold: 0.80
+        
+      - name: "profit_curve_similarity"
+        weight: 0.25
+        threshold: 0.75
+        
+      - name: "risk_metrics_equivalence"
+        weight: 0.20
+        threshold: 0.80
+        
+    overall_threshold: 0.80
+    
+  regression_tests:
+    enabled: true
+    
+    test_cases:
+      - name: "edge_case_no_funds"
+        description: "Testa comportamento quando não há fundos suficientes"
+        
+      - name: "edge_case_high_spread"
+        description: "Testa comportamento com spread anormalmente alto"
+        
+      - name: "edge_case_gapped_market"
+        description: "Testa comportamento em gaps de mercado"
+        
+      - name: "recovery_connection_loss"
+        description: "Testa recuperação após perda de conexão"
+        
+  performance_metrics:
+    enabled: true
+    
+    metrics:
+      - "sharpe_ratio"
+      - "sortino_ratio"
+      - "max_drawdown"
+      - "profit_factor"
+      - "win_rate"
+      - "avg_trade"
+      - "recovery_factor"
+
+# =============================================================================
+# FASE 6: REPORTING
+# =============================================================================
+reporting:
+  enabled: true
+  
+  formats:
+    - "markdown"
+    - "json"
+    - "html"
+    
+  sections:
+    - "executive_summary"
+    - "static_analysis"
+    - "dynamic_analysis"
+    - "reconstruction_details"
+    - "validation_results"
+    - "recommendations"
+    - "appendices"
+    
+  output_templates:
+    markdown: "./templates/reports/report_template.md"
+    html: "./templates/reports/report_template.html"
+
+# =============================================================================
+# NOTIFICAÇÕES
+# =============================================================================
+notifications:
+  enabled: true
+  
+  events:
+    - name: "pipeline_completed"
+      enabled: true
+      
+    - name: "validation_failed"
+      enabled: true
+      channels: ["email", "slack"]
+      
+    - name: "high_confidence_reconstruction"
+      enabled: true
+      threshold: 0.90
+      
+  channels:
+    email:
+      enabled: false
+      smtp_server: "smtp.gmail.com"
+      smtp_port: 587
+      
+    slack:
+      enabled: false
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      
+    webhook:
+      enabled: false
+      url: "${CUSTOM_WEBHOOK_URL}"
+
+# =============================================================================
+# CACHE E OTIMIZAÇÃO
+# =============================================================================
+cache:
+  enabled: true
+  
+  ghidra_analysis:
+    enabled: true
+    ttl: 86400  # 24 horas
+    
+  backtest_results:
+    enabled: true
+    ttl: 604800  # 7 dias
+    
+  ai_responses:
+    enabled: true
+    ttl: 2592000  # 30 dias
+    
+  storage:
+    type: "redis"  # redis, filesystem
+    redis_url: "redis://localhost:6379/0"
+
+# =============================================================================
+# SEGURANÇA
+# =============================================================================
+security:
+  sandbox:
+    enabled: true
+    network_isolation: true
+    resource_limits:
+      cpu: "2"
+      memory: "4G"
+      
+  secrets:
+    provider: "env"  # env, vault, aws_secrets
+    
+  file_permissions:
+    input_dir: "0750"
+    output_dir: "0750"
+    temp_dir: "0700"

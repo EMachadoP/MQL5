@@ -1,0 +1,97 @@
+%% Diagrama do Workflow de Reconstrução de EA Otimizado
+%% EA Reconstruction Pipeline v2.0
+
+flowchart TB
+    subgraph INGESTAO["📥 CAMADA DE INGESTÃO"]
+        EX5["EX5 File"]
+        CHECK["Checksum Verification"]
+        ENTROPY["Entropy Analysis"]
+        STRINGS["String Extraction"]
+    end
+
+    subgraph ESTATICA["🔍 ANÁLISE ESTÁTICA"]
+        GHIDRA["Ghidra Deep Analysis"]
+        PYTHON["Python Utils"]
+        YARA["YARA Pattern Detection"]
+        METADADOS["Knowledge Base JSON"]
+    end
+
+    subgraph DINAMICA["⚡ ANÁLISE DINÂMICA"]
+        BACKTEST["Multi-Regime Backtest"]
+        LOGGER["Behavior Logger MQL5"]
+        SANDBOX["Sandbox Execution"]
+        PERFIL["Behavioral Profile CSV"]
+    end
+
+    subgraph RECONSTRUCAO["🔨 RECONSTRUÇÃO"]
+        PATTERN["Pattern Matcher"]
+        TEMPLATE["Template Engine"]
+        HUMAN["Human Review"]
+        AI["AI Assistance"]
+        CODIGO["Generated MQL5 Code"]
+    end
+
+    subgraph VALIDACAO["✅ VALIDAÇÃO"]
+        EQUIV["Behavioral Equivalence"]
+        REGRESSAO["Regression Tests"]
+        METRICAS["Performance Metrics"]
+        RELATORIO["Validation Report"]
+    end
+
+    %% Fluxo principal
+    EX5 --> CHECK
+    CHECK --> ENTROPY
+    ENTROPY --> STRINGS
+    STRINGS --> GHIDRA
+    STRINGS --> PYTHON
+    STRINGS --> YARA
+    
+    GHIDRA --> METADADOS
+    PYTHON --> METADADOS
+    YARA --> METADADOS
+    
+    METADADOS --> BACKTEST
+    METADADOS --> LOGGER
+    METADADOS --> SANDBOX
+    
+    BACKTEST --> PERFIL
+    LOGGER --> PERFIL
+    SANDBOX --> PERFIL
+    
+    PERFIL --> PATTERN
+    METADADOS --> PATTERN
+    
+    PATTERN --> TEMPLATE
+    TEMPLATE --> HUMAN
+    HUMAN --> AI
+    AI --> CODIGO
+    
+    CODIGO --> EQUIV
+    PERFIL --> EQUIV
+    
+    CODIGO --> REGRESSAO
+    CODIGO --> METRICAS
+    
+    EQUIV --> RELATORIO
+    REGRESSAO --> RELATORIO
+    METRICAS --> RELATORIO
+
+    %% Estilos
+    classDef ingestao fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef estatica fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef dinamica fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef reconstrucao fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef validacao fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px,shape:diamond
+
+    class EX5,CHECK,ENTROPY,STRINGS ingestao
+    class GHIDRA,PYTHON,YARA,METADADOS estatica
+    class BACKTEST,LOGGER,SANDBOX,PERFIL dinamica
+    class PATTERN,TEMPLATE,HUMAN,AI,CODIGO reconstrucao
+    class EQUIV,REGRESSAO,METRICAS,RELATORIO validacao
+
+    %% Anotações
+    NOTE1["⚠️ Decompilação<br/>completa é<br/>impossível"] -.-> GHIDRA
+    NOTE2["📊 Múltiplos<br/>regimes de<br/>mercado"] -.-> BACKTEST
+    NOTE3["🤖 Assistência<br/>não geração<br/>principal"] -.-> AI
+    NOTE4["📈 Score de<br/>equivalência<br/>0-1"] -.-> RELATORIO
